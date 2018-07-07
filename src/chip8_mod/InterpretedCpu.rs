@@ -22,13 +22,14 @@ pub struct InterpretedCpu <'a>  {
 
     memory : [u8 ; 4096],
 
-    display_output : &'a mut ScreenBuffer<'a>,
-    audio_output : &'a mut AudioTimer<'a>,
+    display_output : ScreenBuffer<'a>,
+    audio_output : AudioTimer<'a>,
     keyboard_input : &'a mut (InputReciever + 'a),
+    dead : bool,
 }
 
 impl <'a> InterpretedCpu <'a> {
-    pub fn new(disp : &'a mut ScreenBuffer<'a>, audp : &'a mut AudioTimer<'a>, keyb : &'a mut (InputReciever + 'a)) -> InterpretedCpu<'a> {
+    pub fn new(disp : ScreenBuffer<'a>, audp : AudioTimer<'a>, keyb : &'a mut (InputReciever + 'a)) -> InterpretedCpu<'a> {
         let mut rval = InterpretedCpu {
             pc : 0x0200,
             registerV : [0 ; 16],
@@ -44,7 +45,8 @@ impl <'a> InterpretedCpu <'a> {
 
             display_output : disp, 
             audio_output : audp, 
-            keyboard_input : keyb
+            keyboard_input : keyb,
+            dead : false,
         };
         rval.initialize_memory();
         rval
@@ -76,9 +78,21 @@ impl <'a> OpcodeExecuter for InterpretedCpu <'a> {
         }
     }
 
-    fn get_pc(&mut self) -> u16 {
-        self.pc
+    fn get_next_instr(&self) -> u16 {
+        (self.memory[self.pc as usize] as u16) << 8 | self.memory[self.pc as usize + 1] as u16
     }
+
+    fn has_died(&self) -> bool {
+        self.dead
+    }
+
+    fn die(&mut self) {
+        self.dead = true;
+    }
+
+    fn end_frame(&mut self) {
+        self.pc += 1;
+    } 
     
     fn clear_screen(&mut self) {
         self.display_output.clear_screen()
@@ -89,27 +103,27 @@ impl <'a> OpcodeExecuter for InterpretedCpu <'a> {
         self.pc = self.stack[self.sp];
     }
     fn jump(&mut self, addr : u16) {
-        self.pc = addr;
+        self.pc = addr - 1; //To counter the next progression
     }
     fn call(&mut self, addr : u16) {
         self.stack[self.sp] = self.pc;
         self.sp += 1;
-        self.pc = addr;
+        self.pc = addr - 1; //To counter the next progression
     }
 
     fn skip_if_equal_const(&mut self, register : usize, byte : u8) {
         if self.registerV[register] == byte {
-            self.pc += 2;
+            self.pc += 1;
         }
     }
     fn skip_if_unequal_const(&mut self, register : usize, byte : u8) {
         if self.registerV[register] != byte {
-            self.pc += 2;
+            self.pc += 1;
         }
     }
     fn skip_if_equal_reg(&mut self, register1 : usize, register2 : usize) {
         if self.registerV[register1] == self.registerV[register2] {
-            self.pc +=2;
+            self.pc += 1;
         }
     }
 
@@ -196,7 +210,10 @@ impl <'a> OpcodeExecuter for InterpretedCpu <'a> {
         self.registerV[reg] = self.timer;
     }
     fn wait_for_key(&mut self, reg : usize) {
-        self.registerV[reg] = self.keyboard_input.wait_for_key();
+        match self.keyboard_input.check_any_key() {
+            Some(key) => self.registerV[reg] = key,
+            None => self.pc -= 1
+        }
     }
     fn set_timer (&mut self, reg : usize) {
         self.timer = self.registerV[reg];
