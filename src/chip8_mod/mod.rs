@@ -1,4 +1,8 @@
 pub mod display;
+pub mod cpu;
+pub mod audio;
+pub mod input;
+pub mod InterpretedCpu;
 pub mod default_fontset;
 
 #[cfg(test)]
