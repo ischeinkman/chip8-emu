@@ -29,6 +29,8 @@ impl <'a> ScreenBuffer <'a> {
     }
 
     pub fn put_sprite(&mut self, x : u8,y : u8, sprite : &[u8]) -> bool {
+
+        println!("Got put request at {}, {} length {}.", x, y, sprite.len());
         if x % 8 == 0 {
             return self.put_sprite_simple(x, y, sprite);
         }
@@ -40,7 +42,6 @@ impl <'a> ScreenBuffer <'a> {
         let offset = x % 8;
         let high_mask = 0xFF << (8 - offset);
         let low_mask = !high_mask;
-        println!("Converting offset {} to low mask {:#X} ({}), high mask {:#X} ({}). ", offset, low_mask, low_mask, high_mask, high_mask); 
         for (row_count, row_pixels) in sprite.iter().enumerate() {
             let cur_pos = (x as usize/8 + (y as usize + row_count) * SCREEN_WIDTH/8) as usize;
 
@@ -50,13 +51,8 @@ impl <'a> ScreenBuffer <'a> {
             let top_bits = (left_packet & low_mask) << offset;
             let bottom_bits = (right_packet & high_mask) >> (8 - offset);
             let cur_pixels = top_bits + bottom_bits;
-
-            println!("Got a left of {:#b} and right of {:#b}.", left_packet, right_packet);
-            println!("Masked them to {:#b} and {:#b}.", top_bits, bottom_bits);
-            println!("Added them together into {:#b}. ", cur_pixels);
             
             let next_pixels = cur_pixels ^ row_pixels;
-            println!("XORing {:#b} and {:#b} to {:#b}.", cur_pixels, row_pixels, next_pixels);
 
             if cur_pixels != next_pixels {
                 self.packed_pixels[cur_pos] = (next_pixels >> (offset)) | (left_packet & high_mask);
