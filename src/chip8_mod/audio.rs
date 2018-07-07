@@ -23,7 +23,7 @@ impl <'a> AudioTimer <'a> {
     pub fn tick(&mut self) {
         if self.time != 0 {
             self.audio_output.output_audio();
+            self.time -= 1;
         }
-        self.time -= 1;
     }
 }
