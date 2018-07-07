@@ -42,16 +42,28 @@ pub trait OpcodeExecuter {
 
     fn has_died(&self) -> bool;
 
-    fn end_frame(&mut self) ; 
+    fn end_frame(&mut self) ;
+
+    fn load_rom(&mut self, rom : &[u8]) ;  
+
+    fn reset(&mut self) ; 
 
     fn process_instruction(&mut self, op : u16) { 
-        if op == 0x00E0 { 
+
+        if op == 0 {
+            return;
+        }
+        else if op == 0x00E0 { 
             self.clear_screen() 
         } 
 
         else if op == 0x00EE { 
             self.ret() 
         } 
+
+        else if op & 0xF000 == 0 {
+            println!("GOT A ZERO OP: {:#X}", op);
+        }
 
         else if op & 0xF000 == 0x1000 {
             self.jump(addr(op))
@@ -183,6 +195,7 @@ pub trait OpcodeExecuter {
         }
 
         else {
+            println!("BAD OPCODE: {:#X}", op);
             self.die();
         }
     }
@@ -191,6 +204,9 @@ pub trait OpcodeExecuter {
 
 #[inline(always)]
 fn addr(instruction : u16) -> u16 {
+    if (instruction & 0x0FFF) % 2 == 1 {
+        println!("Got odd jump!");
+    }
     instruction & 0x0FFF
 }
 
