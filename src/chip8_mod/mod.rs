@@ -8,6 +8,8 @@ pub mod default_fontset;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::cpu::*;
+    use std::time::SystemTime;
 
     
 
@@ -51,6 +53,40 @@ mod tests {
 
             self.print_screen();
         }
+    }
+
+    struct TestAudio {
+        play_count : usize
+    }
+
+    impl TestAudio {
+        fn new() -> TestAudio {
+            TestAudio {
+                play_count : 0,
+            }
+        }
+    }
+
+    impl audio::AudioOutput for TestAudio {
+        fn output_audio(&mut self) {
+            println!("\nAUDIO\n");
+            self.play_count += 1;
+        }
+    }
+
+    struct TestInput { }
+
+
+    impl input::InputReciever for TestInput {
+        fn check_any_key(&mut self) -> Option<u8> {
+            Some(0)
+        }
+
+        fn check_key(&mut self, key : u8) -> bool {
+            false
+        }
+
+        fn check_should_die(&mut self) -> bool { false }
     }
 
     #[test]
@@ -97,6 +133,107 @@ mod tests {
         let collided = testbuffer.put_sprite(1, 1, &default_fontset::RAW_7);
         assert!(collided, "Did not detect collision!");
         assert!(!testbuffer.packed_pixels.iter().any(|pixel| *pixel != 0), "Did not collide correctly!");
+    }
+
+    #[test]
+    fn test_cpu_jumping() {
+        let mut display = TestDisplay::new();
+        let mut audio = TestAudio::new();
+        let mut inp = TestInput { };
+        
+        let mut testvbuffer = display::ScreenBuffer::new(&mut display);
+        let mut testabuffer = audio::AudioTimer::new(&mut audio);
+        let mut testCpu = InterpretedCpu::InterpretedCpu::new(testvbuffer, testabuffer, &mut inp);
+
+        let TEST_SIMPLE_JUMP = [
+            0x12, 0x08, 
+            0x70, 0x01, 
+            0x70, 0x01, 
+            0x70, 0x01, 
+            0x70, 0x01, 
+            0x70, 0x01, 
+            0x70, 0x01, 
+        ];
+        testCpu.load_rom(&TEST_SIMPLE_JUMP);
+
+        let mut prevtime = SystemTime::now();
+        while !testCpu.has_died() && testCpu.pc < 4094 {
+            let next_instr = testCpu.get_next_instr();
+            testCpu.process_instruction(next_instr);
+            let curtime = SystemTime::now();
+            let nsecs = curtime.duration_since(prevtime).unwrap().subsec_nanos();
+            testCpu.tick(nsecs as u64);
+            prevtime = curtime;
+            testCpu.end_frame();
+        }
+
+        assert_eq!(testCpu.registerV[0], 3);
+
+        testCpu.reset();
+        assert_eq!(testCpu.registerV[0], 0);
+
+        let TEST_DISCONNECTED_JUMP = [
+            0x12, 0x07, 
+            0x01, 
+            0x70, 0x01, 
+            0x70, 0x01, 
+            0x70, 0x01, 
+            0x70, 0x01, 
+            0x70, 0x01, 
+
+        ];
+        testCpu.load_rom(&TEST_DISCONNECTED_JUMP);
+
+        prevtime = SystemTime::now();
+        while !testCpu.has_died() && testCpu.pc < 4094 {
+            println!("a: {}", testCpu.pc);
+            let next_instr = testCpu.get_next_instr();
+            println!("b");
+            testCpu.process_instruction(next_instr);
+            let curtime = SystemTime::now();
+            let nsecs = curtime.duration_since(prevtime).unwrap().subsec_nanos();
+            testCpu.tick(nsecs as u64);
+            println!("c");
+            prevtime = curtime;
+            testCpu.end_frame();
+            println!("d");
+        }
+
+        assert_eq!(testCpu.registerV[0], 3);
+        
+        
+        testCpu.reset();
+        assert_eq!(testCpu.registerV[0], 0);
+
+        let TEST_CONDITIONS = [
+            0x62, 0x08,  // Load 8 into V[2]
+            0x12, 0x06,  // Skip the next instruction
+            0x75, 0x01,  // SHOULD NOT HIT
+            0x71, 0x01,  // Increment V[1]
+            0x31, 0x0A,  // Don't loop if we are at 10
+            0x12, 0x02,  // Jump back to the 2nd statement
+        ];
+        testCpu.load_rom(&TEST_CONDITIONS);
+
+        prevtime = SystemTime::now();
+        while !testCpu.has_died() && testCpu.pc < 4094 {
+            println!("a: {}", testCpu.pc);
+            let next_instr = testCpu.get_next_instr();
+            println!("b");
+            testCpu.process_instruction(next_instr);
+            let curtime = SystemTime::now();
+            let nsecs = curtime.duration_since(prevtime).unwrap().subsec_nanos();
+            testCpu.tick(nsecs as u64);
+            println!("c");
+            prevtime = curtime;
+            testCpu.end_frame();
+            println!("d");
+        }
+
+        assert_eq!(testCpu.registerV[0], 0);
+        assert_eq!(testCpu.registerV[1], 10);
+        assert_eq!(testCpu.registerV[2], 8);
+        assert_eq!(testCpu.registerV[5], 0);
     }
 
 }
