@@ -36,7 +36,13 @@ pub trait OpcodeExecuter {
 
     fn tick(&mut self, delta_t_in_ns : u64) ;
 
-    fn get_pc(&mut self) -> u16 ; 
+    fn get_next_instr(&self) -> u16 ; 
+
+    fn die(&mut self) ;
+
+    fn has_died(&self) -> bool;
+
+    fn end_frame(&mut self) ; 
 
     fn process_instruction(&mut self, op : u16) { 
         if op == 0x00E0 { 
@@ -177,7 +183,7 @@ pub trait OpcodeExecuter {
         }
 
         else {
-            println!("ERROR")
+            self.die();
         }
     }
 }
