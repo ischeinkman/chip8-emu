@@ -16,6 +16,18 @@
         },
         {
             "type": "shell",
+            "label": "cargo debug",
+            "command": "cargo",
+            "args": [
+                "run",
+                "--features \"log_level=debug log_frames\""
+            ],
+            "problemMatcher": [
+                "$rustc"
+            ]
+        },
+        {
+            "type": "shell",
             "label": "cargo build",
             "command": "cargo",
             "args": [

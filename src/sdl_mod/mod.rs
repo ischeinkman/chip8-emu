@@ -78,17 +78,6 @@ impl SdlRunner {
 
 impl DisplayOutput for SdlDisplayProcessor {
     fn display_buffer (&mut self, buffer : &[u8 ; SCREEN_WIDTH/8 * SCREEN_HEIGHT]) {
-        println!("PRINTING:");
-        for (idx, byte) in buffer.into_iter().enumerate() {
-            if idx % (SCREEN_WIDTH /8) == 0 {
-                println!("");
-            }
-            for mask_num in 0 .. 8 {
-                let mask = 1 << (7 - mask_num);
-                let pval = if byte & mask != 0 { "1" } else { "0" };
-                print!("{}", pval);
-            }
-        }
         self.canvas.set_draw_color(Color::RGB(255,255,255));
         self.canvas.clear();
         self.canvas.set_draw_color(Color::RGB(0,0,0));
@@ -102,8 +91,8 @@ impl DisplayOutput for SdlDisplayProcessor {
         let mut y = 0;
 
         for (idx, byte) in buffer.into_iter().enumerate() {
-            if(idx == 0) { }
-            else if(idx %(SCREEN_WIDTH/8) == 0) {
+            if idx == 0 { }
+            else if idx %(SCREEN_WIDTH/8) == 0 {
                 y += pixel_height;
                 x = 0;
             }
@@ -113,7 +102,7 @@ impl DisplayOutput for SdlDisplayProcessor {
             for mask_num in 0 .. 8 {
                 let mask = 1 << (7 - mask_num);
                 let pval = byte & mask != 0;
-                if(pval) {
+                if pval {
                     let offset : i32 = (mask_num * pixel_width) as i32;
                     let _res = self.canvas.fill_rect(
                         Rect::from((offset + x as i32, y as i32, pixel_width, pixel_height))
@@ -132,7 +121,7 @@ impl SdlKeyProcessor {
                 Event::Quit { .. } | 
                 Event::MouseButtonDown { .. } | 
                 Event::AppTerminating{ .. }  => {
-                    println!("DYING!");
+                    debug_log!("DYING!");
                     self.has_quit = true;
                 },
                 Event::KeyDown { keycode : Some(code), ..} => {
@@ -178,7 +167,7 @@ impl InputReciever for SdlKeyProcessor {
 
 impl AudioOutput for SdlAudioProcessor {
     fn output_audio (&mut self) {
-        println!("AUDIO: {}", self.count);
+        debug_log!("AUDIO: {}", self.count);
         self.count += 1;
     }
 }

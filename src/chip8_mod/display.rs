@@ -30,7 +30,7 @@ impl <'a> ScreenBuffer <'a> {
 
     pub fn put_sprite(&mut self, x : u8,y : u8, sprite : &[u8]) -> bool {
 
-        println!("Got put request at {}, {} length {}.", x, y, sprite.len());
+        debug_log!("Got put request at {}, {} length {}.", x, y, sprite.len());
         if x % 8 == 0 {
             return self.put_sprite_simple(x, y, sprite);
         }
@@ -63,6 +63,20 @@ impl <'a> ScreenBuffer <'a> {
 
         }
         if needs_draw {
+            if cfg!(feature="log_frames") {
+                println!();
+                for (idx, byte) in self.packed_pixels.into_iter().enumerate() {
+                    if idx % (SCREEN_WIDTH /8) == 0 {
+                        println!();
+                    }
+                    for mask_num in 0 .. 8 {
+                        let mask = 1 << (7 - mask_num);
+                        let pval = if byte & mask != 0 { "1" } else { "0" };
+                        print!("{}", pval);
+                    }
+                }
+                println!();
+            }
             self.display_output.display_buffer(&self.packed_pixels);
         }
 

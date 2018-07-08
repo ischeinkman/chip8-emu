@@ -2,8 +2,10 @@ pub mod display;
 pub mod cpu;
 pub mod audio;
 pub mod input;
-pub mod InterpretedCpu;
 pub mod default_fontset;
+
+mod interpretted_cpu;
+pub use self::interpretted_cpu::InterpretedCpu;
 
 #[cfg(test)]
 mod tests {
@@ -82,7 +84,7 @@ mod tests {
             Some(0)
         }
 
-        fn check_key(&mut self, key : u8) -> bool {
+        fn check_key(&mut self, _key : u8) -> bool {
             false
         }
 
@@ -141,11 +143,11 @@ mod tests {
         let mut audio = TestAudio::new();
         let mut inp = TestInput { };
         
-        let mut testvbuffer = display::ScreenBuffer::new(&mut display);
-        let mut testabuffer = audio::AudioTimer::new(&mut audio);
-        let mut testCpu = InterpretedCpu::InterpretedCpu::new(testvbuffer, testabuffer, &mut inp);
+        let testvbuffer = display::ScreenBuffer::new(&mut display);
+        let testabuffer = audio::AudioTimer::new(&mut audio);
+        let mut test_cpu = InterpretedCpu::new(testvbuffer, testabuffer, &mut inp);
 
-        let TEST_SIMPLE_JUMP = [
+        let test_simple_jump = [
             0x12, 0x08, 
             0x70, 0x01, 
             0x70, 0x01, 
@@ -154,25 +156,25 @@ mod tests {
             0x70, 0x01, 
             0x70, 0x01, 
         ];
-        testCpu.load_rom(&TEST_SIMPLE_JUMP);
+        test_cpu.load_rom(&test_simple_jump);
 
         let mut prevtime = SystemTime::now();
-        while !testCpu.has_died() && testCpu.pc < 4094 {
-            let next_instr = testCpu.get_next_instr();
-            testCpu.process_instruction(next_instr);
+        while !test_cpu.has_died() && test_cpu.pc < 4094 {
+            let next_instr = test_cpu.get_next_instr();
+            test_cpu.process_instruction(next_instr);
             let curtime = SystemTime::now();
             let nsecs = curtime.duration_since(prevtime).unwrap().subsec_nanos();
-            testCpu.tick(nsecs as u64);
+            test_cpu.tick(nsecs as u64);
             prevtime = curtime;
-            testCpu.end_frame();
+            test_cpu.end_frame();
         }
 
-        assert_eq!(testCpu.registerV[0], 3);
+        assert_eq!(test_cpu.registerV[0], 3);
 
-        testCpu.reset();
-        assert_eq!(testCpu.registerV[0], 0);
+        test_cpu.reset();
+        assert_eq!(test_cpu.registerV[0], 0);
 
-        let TEST_DISCONNECTED_JUMP = [
+        let test_disconnected_jump = [
             0x12, 0x07, 
             0x01, 
             0x70, 0x01, 
@@ -182,30 +184,30 @@ mod tests {
             0x70, 0x01, 
 
         ];
-        testCpu.load_rom(&TEST_DISCONNECTED_JUMP);
+        test_cpu.load_rom(&test_disconnected_jump);
 
         prevtime = SystemTime::now();
-        while !testCpu.has_died() && testCpu.pc < 4094 {
-            println!("a: {}", testCpu.pc);
-            let next_instr = testCpu.get_next_instr();
+        while !test_cpu.has_died() && test_cpu.pc < 4094 {
+            println!("a: {}", test_cpu.pc);
+            let next_instr = test_cpu.get_next_instr();
             println!("b");
-            testCpu.process_instruction(next_instr);
+            test_cpu.process_instruction(next_instr);
             let curtime = SystemTime::now();
             let nsecs = curtime.duration_since(prevtime).unwrap().subsec_nanos();
-            testCpu.tick(nsecs as u64);
+            test_cpu.tick(nsecs as u64);
             println!("c");
             prevtime = curtime;
-            testCpu.end_frame();
+            test_cpu.end_frame();
             println!("d");
         }
 
-        assert_eq!(testCpu.registerV[0], 3);
+        assert_eq!(test_cpu.registerV[0], 3);
         
         
-        testCpu.reset();
-        assert_eq!(testCpu.registerV[0], 0);
+        test_cpu.reset();
+        assert_eq!(test_cpu.registerV[0], 0);
 
-        let TEST_CONDITIONS = [
+        let test_conditions = [
             0x62, 0x08,  // Load 8 into V[2]
             0x12, 0x06,  // Skip the next instruction
             0x75, 0x01,  // SHOULD NOT HIT
@@ -213,27 +215,27 @@ mod tests {
             0x31, 0x0A,  // Don't loop if we are at 10
             0x12, 0x02,  // Jump back to the 2nd statement
         ];
-        testCpu.load_rom(&TEST_CONDITIONS);
+        test_cpu.load_rom(&test_conditions);
 
         prevtime = SystemTime::now();
-        while !testCpu.has_died() && testCpu.pc < 4094 {
-            println!("a: {}", testCpu.pc);
-            let next_instr = testCpu.get_next_instr();
+        while !test_cpu.has_died() && test_cpu.pc < 4094 {
+            println!("a: {}", test_cpu.pc);
+            let next_instr = test_cpu.get_next_instr();
             println!("b");
-            testCpu.process_instruction(next_instr);
+            test_cpu.process_instruction(next_instr);
             let curtime = SystemTime::now();
             let nsecs = curtime.duration_since(prevtime).unwrap().subsec_nanos();
-            testCpu.tick(nsecs as u64);
+            test_cpu.tick(nsecs as u64);
             println!("c");
             prevtime = curtime;
-            testCpu.end_frame();
+            test_cpu.end_frame();
             println!("d");
         }
 
-        assert_eq!(testCpu.registerV[0], 0);
-        assert_eq!(testCpu.registerV[1], 10);
-        assert_eq!(testCpu.registerV[2], 8);
-        assert_eq!(testCpu.registerV[5], 0);
+        assert_eq!(test_cpu.registerV[0], 0);
+        assert_eq!(test_cpu.registerV[1], 10);
+        assert_eq!(test_cpu.registerV[2], 8);
+        assert_eq!(test_cpu.registerV[5], 0);
     }
 
 }

@@ -62,7 +62,7 @@ pub trait OpcodeExecuter {
         } 
 
         else if op & 0xF000 == 0 {
-            println!("GOT A ZERO OP: {:#X}", op);
+            error_log!("GOT A ZERO OP: {:#X}", op);
         }
 
         else if op & 0xF000 == 0x1000 {
@@ -195,7 +195,7 @@ pub trait OpcodeExecuter {
         }
 
         else {
-            println!("BAD OPCODE: {:#X}", op);
+            error_log!("BAD OPCODE: {:#X}", op);
             self.die();
         }
     }
@@ -205,7 +205,7 @@ pub trait OpcodeExecuter {
 #[inline(always)]
 fn addr(instruction : u16) -> u16 {
     if (instruction & 0x0FFF) % 2 == 1 {
-        println!("Got odd jump!");
+        debug_log!("Got odd jump!");
     }
     instruction & 0x0FFF
 }

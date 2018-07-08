@@ -1,7 +1,11 @@
+#[macro_use]
+mod utils_mod;
+
 mod chip8_mod;
 mod sdl_mod;
 
-use chip8_mod::InterpretedCpu::InterpretedCpu;
+
+use chip8_mod::*;
 use chip8_mod::cpu::OpcodeExecuter;
 use chip8_mod::audio::AudioTimer;
 use chip8_mod::display::ScreenBuffer;
@@ -51,9 +55,8 @@ const TEST_ROM_1 : [u8 ; 34] = [
 ];
 
 fn main() {
-    println!("STARTING EMU!");
-
-    let mut flag = false;
+    error_log!("Error logging started!");
+    debug_log!("Debug logging started!");
 
     let mut window = sdl_mod::SdlRunner::new();
     let mut cpu = InterpretedCpu::new(
@@ -63,13 +66,13 @@ fn main() {
     );
 
     let args : Vec<String> = env::args().collect();
-    if(args.len() > 1) {
+    if args.len() > 1 {
         let rompath = &args[args.len() - 1];
-        println!("USING ROMPATH: {}", rompath);
+        debug_log!("USING ROMPATH: {}", rompath);
         let mut buffer = Vec::new();
         let mut file = File::open(rompath).unwrap();
         file.read_to_end(&mut buffer).unwrap();
-        println!("FINISHED READING FILE");
+        debug_log!("FINISHED READING FILE");
         cpu.load_rom(&buffer);
     }
     else {
@@ -78,19 +81,19 @@ fn main() {
 
     let mut prevtime = SystemTime::now();
     while !cpu.has_died() && cpu.pc < 4094{
-        println!("STARTING FRAME");
+        debug_log!("STARTING FRAME");
         let next_instr = cpu.get_next_instr();
-        println!("OP: {:#X}", next_instr);
-        println!("CPU: {}", cpu);
+        debug_log!("OP: {:#X}", next_instr);
+        debug_log!("CPU: {}", cpu);
         cpu.process_instruction(next_instr);
         let curtime = SystemTime::now();
         let nsecs = curtime.duration_since(prevtime).unwrap().subsec_nanos();
         cpu.tick(nsecs as u64);
         prevtime = curtime;
         cpu.end_frame();
-        println!("ENDING FRAME");
+        debug_log!("ENDING FRAME");
         let die = cpu.keyboard_input.check_should_die();
-        if(die) {
+        if die {
             break;
         }
     }

@@ -1,5 +1,5 @@
 use chip8_mod::cpu::OpcodeExecuter;
-use chip8_mod::display::ScreenBuffer;
+use chip8_mod::display::{ScreenBuffer, SCREEN_HEIGHT, SCREEN_WIDTH};
 use chip8_mod::audio::AudioTimer;
 use chip8_mod::input::InputReciever;
 use chip8_mod::default_fontset::*;
@@ -71,16 +71,16 @@ impl <'a> OpcodeExecuter for InterpretedCpu <'a> {
 
     fn load_rom(&mut self, rom : &[u8]) {
         for(idx, byte) in rom.into_iter().enumerate() {
-            println!("PUTTING BYTE {:#X} INTO SLOT {:#X}", byte, 0x200 + idx);
+            debug_log!("PUTTING BYTE {:#X} INTO SLOT {:#X}", byte, 0x200 + idx);
             self.memory[0x200 + idx] = *byte;
         }
     }
 
     fn tick(&mut self, ns_since_last_frame : u64) {
         self.ns_since_last_tick += ns_since_last_frame;
-        println!("NS SINCE LAST: {}", self.ns_since_last_tick);
+        debug_log!("NS SINCE LAST: {}", self.ns_since_last_tick);
         if self.ns_since_last_tick >= NANO_BETWEEN_TICKS {
-            println!("TICKING: {} > {}", self.ns_since_last_tick, NANO_BETWEEN_TICKS);
+            debug_log!("TICKING: {} > {}", self.ns_since_last_tick, NANO_BETWEEN_TICKS);
             if self.timer > 0 {
                 self.timer -= 1;
             }
@@ -215,8 +215,11 @@ impl <'a> OpcodeExecuter for InterpretedCpu <'a> {
         let x = self.registerV[xreg];
         let y = self.registerV[yreg];
         let sprite = &self.memory[self.I as usize .. (self.I + length as u16) as usize];
-        self.display_output.put_sprite(x, y, &sprite);
-        println!("CPU Draw sprite using {} => {}, {} => {}, length {}.", xreg, x, yreg, y, length);
+        debug_log!("CPU Draw sprite using {} => {}, {} => {}, length {}.", xreg, x, yreg, y, length);
+        if x + 8 >= SCREEN_WIDTH as u8 || y + length >= SCREEN_HEIGHT as u8 {
+            error_log!("Bad draw dims: ({} -> {}) by ({} -> {}).\nCPU: {}", x, x+8, y, y + length, self);
+        }
+        self.registerV[0xF] = if self.display_output.put_sprite(x, y, &sprite) { 1 } else { 0 };
     }
     fn skip_if_key_pressed(&mut self, reg : usize) {
         let key = self.registerV[reg];
