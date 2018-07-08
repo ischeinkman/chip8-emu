@@ -43,10 +43,15 @@ impl <'a> ScreenBuffer <'a> {
         let high_mask = 0xFF << (8 - offset);
         let low_mask = !high_mask;
         for (row_count, row_pixels) in sprite.iter().enumerate() {
-            let cur_pos = (x as usize/8 + (y as usize + row_count) * SCREEN_WIDTH/8) as usize;
+            let left_x_offset = (x as usize/8) % (SCREEN_WIDTH/8);
+            let right_x_offset = (1 + x as usize/8) % (SCREEN_WIDTH/8);
+            let y_offset = SCREEN_WIDTH/8 * ((y as usize + row_count) % SCREEN_HEIGHT);
 
-            let left_packet = self.packed_pixels[cur_pos];
-            let right_packet = self.packed_pixels[cur_pos + 1];
+            let left_pos = y_offset + left_x_offset;
+            let right_pos = y_offset + right_x_offset;
+
+            let left_packet = self.packed_pixels[left_pos];
+            let right_packet = self.packed_pixels[right_pos];
 
             let top_bits = (left_packet & low_mask) << offset;
             let bottom_bits = (right_packet & high_mask) >> (8 - offset);
@@ -55,16 +60,16 @@ impl <'a> ScreenBuffer <'a> {
             let next_pixels = cur_pixels ^ row_pixels;
 
             if cur_pixels != next_pixels {
-                self.packed_pixels[cur_pos] = (next_pixels >> (offset)) | (left_packet & high_mask);
-                self.packed_pixels[cur_pos + 1] = (next_pixels << (8 - offset)) | (right_packet & low_mask);
+                self.packed_pixels[left_pos] = (next_pixels >> (offset)) | (left_packet & high_mask);
+                self.packed_pixels[right_pos] = (next_pixels << (8 - offset)) | (right_packet & low_mask);
                 collided = collided || (0 != (cur_pixels & !next_pixels));
                 needs_draw = true;
             }
 
         }
         if needs_draw {
-            if cfg!(feature="log_frames") {
-                println!();
+            if cfg!(feature = "log_frames") {
+                println!("Logging frame:");
                 for (idx, byte) in self.packed_pixels.into_iter().enumerate() {
                     if idx % (SCREEN_WIDTH /8) == 0 {
                         println!();
@@ -87,8 +92,8 @@ impl <'a> ScreenBuffer <'a> {
         let mut collided = false;
         let mut needs_draw = false;
         for (row_count, row_pixels) in sprite.iter().enumerate() {
-            let x_bonus = (x as usize)/8;
-            let y_bonus = ((row_count + y as usize) * SCREEN_WIDTH/8) as usize;
+            let x_bonus = (x as usize)/8 % (SCREEN_WIDTH/8);
+            let y_bonus = (((row_count + y as usize) % SCREEN_HEIGHT) * SCREEN_WIDTH/8) as usize;
             let cur_pos = x_bonus + y_bonus;
 
             let cur_pixels = self.packed_pixels[cur_pos];
