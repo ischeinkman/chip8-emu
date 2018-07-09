@@ -67,7 +67,7 @@ fn main() {
 
     let args : Vec<String> = env::args().collect();
 
-    let mut min_frame_time : u32 = (1000 * 1000 * 1000) / (120); //default to maxing at 120 FPS
+    let mut min_frame_time : u32 = 0; //default to maxing at the maximum FPS
     let mut rompath : &str = "";
 
     let mut arg_idx = 1;
