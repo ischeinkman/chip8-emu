@@ -177,18 +177,32 @@ impl <'a> OpcodeExecuter for InterpretedCpu <'a> {
         self.registerV[acc] = value;
     }
     fn sub_register(&mut self, acc : usize, reg : usize) {
-        let (value, overflowed) = self.registerV[acc].overflowing_sub(self.registerV[reg]);
-        self.registerV[0xF] = if overflowed { 1 } else { 0 };
-        self.registerV[acc] = value;
+        let a = self.registerV[acc];
+        let b = self.registerV[reg];
+        if(a < b) {
+            self.registerV[0xF] = 0;
+            self.registerV[acc] =  0xFF - (b - a);
+        }
+        else {
+            self.registerV[0xF] = 1;
+            self.registerV[acc] = a - b;
+        }
     }
     fn right_shift_register(&mut self, acc : usize, reg : usize) { 
         self.registerV[acc] = self.registerV[reg] >> 1;
         self.registerV[0xF] = self.registerV[reg] & 0x01;
     }
     fn rev_sub_register(&mut self, acc : usize, reg : usize) {
-        let (value, overflowed) = self.registerV[reg].overflowing_sub(self.registerV[acc]);
-        self.registerV[0xF] = if overflowed { 1 } else { 0 };
-        self.registerV[acc] = value;
+        let a = self.registerV[acc];
+        let b = self.registerV[reg];
+        if(b < a) {
+            self.registerV[0xF] = 0;
+            self.registerV[acc] =  0xFF - (a - b);
+        }
+        else {
+            self.registerV[0xF] = 1;
+            self.registerV[acc] = b - a;
+        }
     }
     fn left_shift_register(&mut self, acc : usize, reg : usize) { 
         self.registerV[0xF] = self.registerV[reg] & 0x80;
