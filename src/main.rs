@@ -66,8 +66,27 @@ fn main() {
     );
 
     let args : Vec<String> = env::args().collect();
-    if args.len() > 1 {
-        let rompath = &args[args.len() - 1];
+
+    let mut min_frame_time : u32 = (1000 * 1000 * 1000) / (120); //default to maxing at 120 FPS
+    let mut rompath : &str = "";
+
+    let mut arg_idx = 1;
+    while arg_idx < args.len() {
+        let to_proc = args[arg_idx].as_ref();
+        match to_proc {
+            "--fps" => {
+                arg_idx += 1;
+                let max_fps = args[arg_idx].parse::<u32>().unwrap();
+                min_frame_time = (1000 * 1000 * 1000) / max_fps;
+            }
+            _ => {
+                rompath = &args[arg_idx];
+            }
+        };
+        arg_idx += 1;
+    } 
+
+    if !rompath.is_empty() {
         debug_log!("USING ROMPATH: {}", rompath);
         let mut buffer = Vec::new();
         let mut file = File::open(rompath).unwrap();
@@ -82,16 +101,31 @@ fn main() {
     let mut prevtime = SystemTime::now();
     while !cpu.has_died() && cpu.pc < 4094{
         debug_log!("STARTING FRAME");
+
+        //Run the next instruction
         let next_instr = cpu.get_next_instr();
         debug_log!("OP: {:#X}", next_instr);
         debug_log!("CPU: {}", cpu);
         cpu.process_instruction(next_instr);
-        let curtime = SystemTime::now();
-        let nsecs = curtime.duration_since(prevtime).unwrap().subsec_nanos();
-        cpu.tick(nsecs as u64);
+
+        //Update the timing
+        let mut curtime = SystemTime::now();
+        let mut nsecs = curtime.duration_since(prevtime).unwrap().subsec_nanos();
+        while nsecs < min_frame_time {
+            curtime = SystemTime::now();
+            nsecs = curtime.duration_since(prevtime).unwrap().subsec_nanos();
+        }
+        if cfg!(feature="log_fps") {
+            println!("FPS: {}", (1000 * 1000 * 1000)/nsecs);
+        }
         prevtime = curtime;
+        cpu.tick(nsecs as u64);
+
+        //End the frame
         cpu.end_frame();
         debug_log!("ENDING FRAME");
+
+        //Check for emulation end
         let die = cpu.keyboard_input.check_should_die();
         if die {
             break;

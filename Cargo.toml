@@ -9,6 +9,7 @@ sdl2 = "0.31.0"
 
 [features]
 default = []
-"log_level=error" = []
-"log_level=debug" = ["log_level=error"]
+log_fps = []
 log_frames = []
+"log_level=error" = []
+"log_level=debug" = ["log_level=error", "log_fps"]
