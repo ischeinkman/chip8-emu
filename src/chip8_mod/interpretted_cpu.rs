@@ -1,4 +1,4 @@
-use chip8_mod::cpu::OpcodeExecuter;
+use chip8_mod::cpu::{OpcodeExecuter, InstructionSet};
 use chip8_mod::display::{ScreenBuffer, SCREEN_HEIGHT, SCREEN_WIDTH};
 use chip8_mod::audio::AudioTimer;
 use chip8_mod::input::InputReciever;
@@ -28,10 +28,11 @@ pub struct InterpretedCpu <'a>  {
     pub audio_output : AudioTimer<'a>,
     pub keyboard_input : &'a mut (InputReciever + 'a),
     pub dead : bool,
+    instruction_set : InstructionSet,
 }
 
 impl <'a> InterpretedCpu <'a> {
-    pub fn new(disp : ScreenBuffer<'a>, audp : AudioTimer<'a>, keyb : &'a mut (InputReciever + 'a)) -> InterpretedCpu<'a> {
+    pub fn new(kind: InstructionSet, disp : ScreenBuffer<'a>, audp : AudioTimer<'a>, keyb : &'a mut (InputReciever + 'a)) -> InterpretedCpu<'a> {
         let mut rval = InterpretedCpu {
             pc : 0x0200,
             registerV : [0 ; 16],
@@ -49,6 +50,7 @@ impl <'a> InterpretedCpu <'a> {
             audio_output : audp, 
             keyboard_input : keyb,
             dead : false,
+            instruction_set : kind,
         };
         rval.initialize_memory();
         rval
@@ -188,9 +190,18 @@ impl <'a> OpcodeExecuter for InterpretedCpu <'a> {
             self.registerV[acc] = a - b;
         }
     }
-    fn right_shift_register(&mut self, acc : usize, reg : usize) { 
-        self.registerV[acc] = self.registerV[reg] >> 1;
-        self.registerV[0xF] = self.registerV[reg] & 0x01;
+    fn right_shift_register(&mut self, acc : usize, reg : usize) {
+        match self.instruction_set {
+            InstructionSet::COWGOD => {
+                self.registerV[0xF] = self.registerV[acc] & 1;
+                self.registerV[acc] = self.registerV[acc] >> 1;
+            }
+            InstructionSet::LEGACY => {
+                self.registerV[0xF] = self.registerV[reg] & 1;
+                self.registerV[reg] >>= 1;
+                self.registerV[acc] = self.registerV[reg];
+            }
+        }
     }
     fn rev_sub_register(&mut self, acc : usize, reg : usize) {
         let a = self.registerV[acc];
@@ -205,9 +216,17 @@ impl <'a> OpcodeExecuter for InterpretedCpu <'a> {
         }
     }
     fn left_shift_register(&mut self, acc : usize, reg : usize) { 
-        self.registerV[0xF] = self.registerV[reg] & 0x80;
-        self.registerV[reg] = self.registerV[reg] << 1;
-        self.registerV[acc] = self.registerV[reg];
+        match self.instruction_set {
+            InstructionSet::COWGOD => {
+                self.registerV[0xF] = self.registerV[acc] >> 7;
+                self.registerV[acc] = self.registerV[acc] << 1;
+            }
+            InstructionSet::LEGACY => {
+                self.registerV[0xF] = self.registerV[reg] >> 7;
+                self.registerV[reg] <<= 1;
+                self.registerV[acc] = self.registerV[reg];
+            }
+        }
     }
     fn skip_if_unequal_reg(&mut self, register1 : usize, register2 : usize) {
         if self.registerV[register1] != self.registerV[register2] {
@@ -276,14 +295,24 @@ impl <'a> OpcodeExecuter for InterpretedCpu <'a> {
     }
     fn save_registers(&mut self, reg : usize) {
         for regnum in 0 .. reg + 1 {
-            self.memory[self.I as usize] = self.registerV[regnum];
-            self.I += 1;
+            self.memory[self.I as usize + regnum] = self.registerV[regnum];
+        }
+        match self.instruction_set {
+            InstructionSet::LEGACY => {
+                self.I += (reg as u16 + 1);
+            }, 
+            _ => ()
         }
     }
     fn restore_registers(&mut self, reg : usize) {
         for regnum in 0 .. reg + 1 {
-            self.registerV[regnum] = self.memory[self.I as usize];
-            self.I += 1;
+            self.registerV[regnum] = self.memory[self.I as usize + regnum];
+        }
+        match self.instruction_set {
+            InstructionSet::LEGACY => {
+                self.I += (reg as u16 + 1);
+            }, 
+            _ => ()
         }
     }
 

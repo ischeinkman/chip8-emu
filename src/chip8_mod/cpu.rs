@@ -1,4 +1,7 @@
 pub trait OpcodeExecuter {
+
+    // Instruction process functions 
+
     fn clear_screen(&mut self) ;
     fn ret(&mut self) ;
     fn jump(&mut self, addr : u16) ;
@@ -34,19 +37,25 @@ pub trait OpcodeExecuter {
     fn save_registers(&mut self, reg : usize) ;
     fn restore_registers(&mut self, reg : usize) ; 
 
+    //Once per frame helper functions
+
     fn tick(&mut self, delta_t_in_ns : u64) ;
 
     fn get_next_instr(&self) -> u16 ; 
+    
+    fn end_frame(&mut self) ;
+
+    //Misc management functions
 
     fn die(&mut self) ;
 
     fn has_died(&self) -> bool;
 
-    fn end_frame(&mut self) ;
-
     fn load_rom(&mut self, rom : &[u8]) ;  
 
     fn reset(&mut self) ; 
+
+    // The instruction delegator
 
     fn process_instruction(&mut self, op : u16) { 
 
@@ -199,6 +208,11 @@ pub trait OpcodeExecuter {
             self.die();
         }
     }
+}
+
+pub enum InstructionSet {
+    LEGACY,
+    COWGOD,
 }
 
 

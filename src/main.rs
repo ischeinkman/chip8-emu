@@ -6,7 +6,7 @@ mod sdl_mod;
 
 
 use chip8_mod::*;
-use chip8_mod::cpu::OpcodeExecuter;
+use chip8_mod::cpu::{OpcodeExecuter, InstructionSet};
 use chip8_mod::audio::AudioTimer;
 use chip8_mod::display::ScreenBuffer;
 
@@ -58,17 +58,11 @@ fn main() {
     error_log!("Error logging started!");
     debug_log!("Debug logging started!");
 
-    let mut window = sdl_mod::SdlRunner::new();
-    let mut cpu = InterpretedCpu::new(
-        ScreenBuffer::new(&mut window.video), 
-        AudioTimer::new(&mut window.audio),
-        &mut window.keys
-    );
-
     let args : Vec<String> = env::args().collect();
 
     let mut min_frame_time : u32 = 0; //default to maxing at the maximum FPS
     let mut rompath : &str = "";
+    let mut legacy = false;
 
     let mut arg_idx = 1;
     while arg_idx < args.len() {
@@ -78,6 +72,11 @@ fn main() {
                 arg_idx += 1;
                 let max_fps = args[arg_idx].parse::<u32>().unwrap();
                 min_frame_time = (1000 * 1000 * 1000) / max_fps;
+                debug_log!("Setting max fps to {}, meaning min_dt = {}.", max_fps, min_frame_time);
+            }
+            "--legacy" => {
+                legacy = true;
+                debug_log!("Set legacy to ON.");
             }
             _ => {
                 rompath = &args[arg_idx];
@@ -85,6 +84,14 @@ fn main() {
         };
         arg_idx += 1;
     } 
+
+    let mut window = sdl_mod::SdlRunner::new();
+    let mut cpu = InterpretedCpu::new(
+        if legacy { InstructionSet::LEGACY } else { InstructionSet::COWGOD },
+        ScreenBuffer::new(&mut window.video), 
+        AudioTimer::new(&mut window.audio),
+        &mut window.keys
+    );
 
     if !rompath.is_empty() {
         debug_log!("USING ROMPATH: {}", rompath);
