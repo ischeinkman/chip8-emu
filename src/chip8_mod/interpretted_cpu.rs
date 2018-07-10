@@ -249,7 +249,7 @@ impl <'a> OpcodeExecuter for InterpretedCpu <'a> {
         let y = self.registerV[yreg];
         let sprite = &self.memory[self.I as usize .. (self.I + length as u16) as usize];
         debug_log!("CPU Draw sprite using {} => {}, {} => {}, length {}.", xreg, x, yreg, y, length);
-        if x + 8 >= SCREEN_WIDTH as u8 || y + length >= SCREEN_HEIGHT as u8 {
+        if x + 8 > SCREEN_WIDTH as u8 || y + length > SCREEN_HEIGHT as u8 {
             error_log!("Bad draw dims: ({} -> {}) by ({} -> {}).\nCPU: {}", x, x+8, y, y + length, self);
         }
         self.registerV[0xF] = if self.display_output.put_sprite(x, y, &sprite) { 1 } else { 0 };
