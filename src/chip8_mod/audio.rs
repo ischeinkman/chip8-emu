@@ -1,6 +1,7 @@
 
 pub trait AudioOutput {
     fn output_audio (&mut self) ;
+    fn stop_audio (&mut self) ;
 }
 
 pub struct AudioTimer<'a> {
@@ -24,6 +25,9 @@ impl <'a> AudioTimer <'a> {
         if self.time != 0 {
             self.audio_output.output_audio();
             self.time -= 1;
+            if self.time == 0 {
+                self.audio_output.stop_audio();
+            }
         }
     }
 }

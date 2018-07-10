@@ -15,7 +15,7 @@ use std::fs::File;
 use std::io::{Read};
 use std::time::SystemTime;
 
-const TEST_ROM_1 : [u8 ; 34] = [
+const TEST_ROM_1 : [u8 ; 38] = [
 
     0x65, 0x0A, //Run for 10 seconds
 
@@ -28,6 +28,8 @@ const TEST_ROM_1 : [u8 ; 34] = [
     // Set the delay at 1 second
     0x60, 0x3c, // Load the value 60 into V0
     0xF0, 0x15, // Set the delay timer = V0
+    0x60, 0x1e, // Load the value 30 into V0
+    0xF0, 0x18, // Play audio for half a second
 
     //INNER LOOP LABEL
     
@@ -41,7 +43,7 @@ const TEST_ROM_1 : [u8 ; 34] = [
     // Check the inner loop
     0xF0, 0x07,  //Load the timer into V0
     0x30, 0x00,  //Don't jump if V0 == 0
-    0x12, 0x0A,  // Jump to the clear screen instruction, 10 bytes after start
+    0x12, 0x0E,  // Jump to the clear screen instruction, 10 bytes after start
 
     //Decrement V5
     0x68, 0x01, //Store 1 into V8 since we dont have a SUB CONST instruciton

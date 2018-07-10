@@ -6,6 +6,7 @@ use sdl_mod::sdl2::EventPump;
 use sdl_mod::sdl2::pixels::Color;
 use sdl_mod::sdl2::rect::Rect;
 use sdl_mod::sdl2::event::Event;
+use sdl_mod::sdl2::audio::{AudioDevice, AudioSpecDesired, AudioSpec, AudioCallback};
 
 use chip8_mod::display::{DisplayOutput, SCREEN_HEIGHT, SCREEN_WIDTH};
 use chip8_mod::audio::AudioOutput;
@@ -21,6 +22,7 @@ const DEFAULT_KEY_CONFIG : [Keycode; 0x10] = [
 ];
 
 pub struct Config {
+    audio_frequency : f32,
     chip8_keys : [Keycode ; 0x10],
 }
 
@@ -36,7 +38,8 @@ pub struct SdlDisplayProcessor {
 }
 
 pub struct SdlAudioProcessor {
-    count : u8,
+    audio_frequency : f32,
+    audio_device : AudioDevice<SquareWaveCallback>,
 }
 
 pub struct SdlRunner {
@@ -54,15 +57,33 @@ impl SdlRunner {
             .build()
             .unwrap();
         let canvas_obj = window_obj.into_canvas().build().unwrap();
+        let audio_obj = sdl_context.audio()
+            .unwrap()
+            .open_playback(
+                None, 
+                &AudioSpecDesired {
+                    freq : Some(44100),
+                    channels : Some(1),
+                    samples : None,
+                },
+                | spec | {
+                    let actualfreq = spec.freq as f32;
+                    SquareWaveCallback::new(0.5, 440.0, actualfreq)
+                }
+            )
+            .unwrap();
+        audio_obj.pause();
         SdlRunner {
             conf : Config {
                 chip8_keys : DEFAULT_KEY_CONFIG,
+                audio_frequency : 440.0,
             },
             video : SdlDisplayProcessor {
                 canvas : canvas_obj, 
             },
             audio : SdlAudioProcessor {
-                count : 0,
+                audio_frequency : 440.0, 
+                audio_device : audio_obj,
             },
             keys : SdlKeyProcessor {
                 key_map : DEFAULT_KEY_CONFIG,
@@ -167,7 +188,41 @@ impl InputReciever for SdlKeyProcessor {
 
 impl AudioOutput for SdlAudioProcessor {
     fn output_audio (&mut self) {
-        debug_log!("AUDIO: {}", self.count);
-        self.count += 1;
+        self.audio_device.resume();
+    }
+
+    fn stop_audio(&mut self) {
+        self.audio_device.pause();
+    }
+}
+
+struct SquareWaveCallback {
+    offset : f32, 
+    step : f32, 
+    volume : f32,
+}
+
+impl SquareWaveCallback {
+    fn new(volume : f32, desired_freq : f32, sample_freq : f32) -> SquareWaveCallback {
+        SquareWaveCallback {
+            offset : 0.0,
+            volume : volume,
+            step : desired_freq/sample_freq
+        }
+    }
+}
+
+impl AudioCallback for SquareWaveCallback {
+    type Channel = f32;
+    fn callback(&mut self, output_buffer : &mut [f32]) {
+        for x in output_buffer.iter_mut() {
+            if self.offset <= 0.5 {
+                *x = self.volume;
+            }
+            else {
+                *x = -self.volume;
+            }
+            self.offset = (self.offset + self.step) % 1.0;
+        }
     }
 }
