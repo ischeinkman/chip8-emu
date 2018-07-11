@@ -15,6 +15,14 @@ use std::fs::File;
 use std::io::{Read};
 use std::time::SystemTime;
 
+
+///
+/// A minimalist rom to test the CPU. 
+/// 
+/// Is loaded by default if no other ROM is passed.
+/// 
+/// Should display an E while toggling the audio every half second.
+/// Quits after 10 seconds.
 const TEST_ROM_1 : [u8 ; 38] = [
 
     0x65, 0x0A, //Run for 10 seconds
@@ -60,12 +68,14 @@ fn main() {
     error_log!("Error logging started!");
     debug_log!("Debug logging started!");
 
-    let args : Vec<String> = env::args().collect();
 
+    let args : Vec<String> = env::args().collect();
+    // Set the default command line argument values
     let mut min_frame_time : u32 = 0; //default to maxing at the maximum FPS
     let mut rompath : &str = "";
     let mut legacy = false;
-
+    
+    // Parse the command line arguments
     let mut arg_idx = 1;
     while arg_idx < args.len() {
         let to_proc = args[arg_idx].as_ref();
@@ -73,20 +83,21 @@ fn main() {
             "--fps" => {
                 arg_idx += 1;
                 let max_fps = args[arg_idx].parse::<u32>().unwrap();
-                min_frame_time = (1000 * 1000 * 1000) / max_fps;
+                min_frame_time = (1000 * 1000 * 1000) / max_fps; // Calculate frame time from fps
                 debug_log!("Setting max fps to {}, meaning min_dt = {}.", max_fps, min_frame_time);
-            }
+            },
             "--legacy" => {
                 legacy = true;
                 debug_log!("Set legacy to ON.");
-            }
+            },
             _ => {
                 rompath = &args[arg_idx];
-            }
+            },
         };
         arg_idx += 1;
     } 
 
+    // Set up the SDL environment
     let mut window = sdl_mod::SdlRunner::new();
     let mut cpu = InterpretedCpu::new(
         if legacy { InstructionSet::LEGACY } else { InstructionSet::COWGOD },
@@ -95,6 +106,7 @@ fn main() {
         &mut window.keys
     );
 
+    // Load the ROM
     if !rompath.is_empty() {
         debug_log!("USING ROMPATH: {}", rompath);
         let mut buffer = Vec::new();
@@ -107,6 +119,7 @@ fn main() {
         cpu.load_rom(&TEST_ROM_1);
     }
 
+    // The main execution loop
     let mut prevtime = SystemTime::now();
     while !cpu.has_died() && cpu.pc < 4094{
         debug_log!("STARTING FRAME");
@@ -120,7 +133,7 @@ fn main() {
         //Update the timing
         let mut curtime = SystemTime::now();
         let mut nsecs = curtime.duration_since(prevtime).unwrap().subsec_nanos();
-        while nsecs < min_frame_time {
+        while nsecs < min_frame_time { // The code to limit CPU HZ 
             curtime = SystemTime::now();
             nsecs = curtime.duration_since(prevtime).unwrap().subsec_nanos();
         }

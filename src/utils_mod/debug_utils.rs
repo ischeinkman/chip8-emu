@@ -1,5 +1,7 @@
 
 
+///
+/// Prints to STDOUT if the log level is set to ```log_level=debug```.
 #[macro_export]
 macro_rules! debug_log {
     ($fmt:expr) => {
@@ -14,6 +16,8 @@ macro_rules! debug_log {
     };
 }
 
+///
+/// Prints to STDERR if the log level is set to ```log_level=error```.
 #[macro_export]
 macro_rules! error_log {
     ($fmt:expr) => {
